@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Rocket Fin & Nose Cone Generator</title>
+    <style>
+/* Reset and Base Styles */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+    --bg-primary: #1a1a2e; --bg-secondary: #16213e; --bg-tertiary: #0f3460;
+    --accent: #e94560; --accent-hover: #ff6b6b;
+    --text-primary: #eaeaea; --text-secondary: #a0a0a0;
+    --border-color: #2a2a4a; --success: #4ade80;
+    --canvas-bg: #0a0a1a; --grid-color: #2a2a4a;
+}
+html { font-size: 16px; }
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg-primary); color: var(--text-primary);
+    line-height: 1.5; overflow: hidden; height: 100vh; height: 100dvh;
+}
+.app-container { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.app-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 20px; background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+}
+.app-header h1 { font-size: 1.4rem; font-weight: 600; color: var(--accent); }
+.unit-toggle { display: flex; gap: 15px; }
+.unit-toggle label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 0.9rem; }
+.unit-toggle input[type="radio"] { accent-color: var(--accent); width: 18px; height: 18px; }
+.main-content { display: flex; flex: 1; overflow: hidden; position: relative; }
+.control-panel {
+    width: 320px; min-width: 280px; background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color); overflow-y: auto;
+    padding-bottom: 20px; flex-shrink: 0;
+}
+.panel-toggle {
+    display: none; position: fixed; bottom: 20px; left: 20px; z-index: 1000;
+    width: 56px; height: 56px; border-radius: 50%; background: var(--accent);
+    border: none; color: white; font-size: 24px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: transform 0.2s, background 0.2s;
+}
+.panel-toggle:hover { background: var(--accent-hover); transform: scale(1.05); }
+.panel-toggle:active { transform: scale(0.95); }
+.control-section { padding: 15px; border-bottom: 1px solid var(--border-color); }
+.control-section h2 {
+    font-size: 0.85rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 12px;
+}
+.mode-tabs { display: flex; gap: 8px; }
+.mode-tab {
+    flex: 1; padding: 12px 15px; border: 1px solid var(--border-color);
+    background: var(--bg-primary); color: var(--text-secondary);
+    border-radius: 6px; cursor: pointer; font-size: 0.9rem;
+    transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+}
+.mode-tab:hover { border-color: var(--accent); color: var(--text-primary); }
+.mode-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+.control-group { margin-bottom: 15px; }
+.control-group label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; }
+.control-group label span:not(.unit) { color: var(--text-primary); font-weight: 500; }
+.control-group select, .control-group input[type="number"] {
+    width: 100%; padding: 10px 12px; background: var(--bg-primary);
+    border: 1px solid var(--border-color); border-radius: 6px;
+    color: var(--text-primary); font-size: 16px;
+}
+.control-group select:focus, .control-group input[type="number"]:focus { outline: none; border-color: var(--accent); }
+.control-group input[type="range"] {
+    width: 100%; height: 8px; border-radius: 4px; background: var(--bg-primary);
+    appearance: none; -webkit-appearance: none; cursor: pointer; margin: 8px 0;
+}
+.control-group input[type="range"]::-webkit-slider-thumb {
+    appearance: none; -webkit-appearance: none; width: 24px; height: 24px;
+    border-radius: 50%; background: var(--accent); cursor: pointer; transition: transform 0.1s;
+}
+.control-group input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.control-group input[type="range"]::-moz-range-thumb {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--accent); cursor: pointer; border: none;
+}
+.control-group input[type="checkbox"] { accent-color: var(--accent); width: 20px; height: 20px; margin-right: 8px; }
+.export-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.export-btn {
+    padding: 12px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color);
+    border-radius: 6px; color: var(--text-primary); font-size: 0.85rem;
+    cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+}
+.export-btn:hover, .export-btn:active { background: var(--accent); border-color: var(--accent); }
+.canvas-panel { flex: 1; display: flex; flex-direction: column; background: var(--canvas-bg); min-width: 0; }
+.canvas-toolbar {
+    display: flex; align-items: center; gap: 8px; padding: 8px 15px;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0; flex-wrap: wrap;
+}
+.canvas-toolbar button {
+    padding: 8px 14px; background: var(--bg-primary); border: 1px solid var(--border-color);
+    border-radius: 4px; color: var(--text-primary); font-size: 0.85rem;
+    cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+    min-width: 44px; min-height: 44px;
+}
+.canvas-toolbar button:hover, .canvas-toolbar button:active { border-color: var(--accent); color: var(--accent); }
+.canvas-toolbar button.active { background: var(--accent); border-color: var(--accent); color: white; }
+.zoom-level { margin-left: auto; font-size: 0.85rem; color: var(--text-secondary); }
+.canvas-container { flex: 1; position: relative; overflow: hidden; touch-action: none; }
+#main-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
+.canvas-info {
+    padding: 6px 15px; background: var(--bg-secondary); border-top: 1px solid var(--border-color);
+    font-size: 0.8rem; color: var(--text-secondary); font-family: 'Consolas', 'Monaco', monospace; flex-shrink: 0;
+}
+.control-panel::-webkit-scrollbar { width: 8px; }
+.control-panel::-webkit-scrollbar-track { background: var(--bg-primary); }
+.control-panel::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+.control-panel::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+@media (max-width: 1024px) { .control-panel { width: 280px; min-width: 260px; } }
+@media (max-width: 768px) {
+    html { font-size: 14px; }
+    .app-header { padding: 10px 15px; }
+    .app-header h1 { font-size: 1.1rem; }
+    .main-content { flex-direction: column-reverse; }
+    .panel-toggle { display: flex; align-items: center; justify-content: center; }
+    .control-panel {
+        position: fixed; bottom: 0; left: 0; right: 0; width: 100%; max-height: 70vh;
+        min-width: unset; border-right: none; border-top: 1px solid var(--border-color);
+        border-radius: 20px 20px 0 0; transform: translateY(100%);
+        transition: transform 0.3s ease-out; z-index: 999; padding-top: 10px;
+    }
+    .control-panel.open { transform: translateY(0); }
+    .control-panel::before {
+        content: ''; display: block; width: 40px; height: 4px;
+        background: var(--border-color); border-radius: 2px; margin: 0 auto 10px;
+    }
+    .canvas-panel { flex: 1; height: 100%; }
+    .canvas-toolbar { padding: 6px 10px; gap: 6px; }
+    .canvas-toolbar button { padding: 8px 10px; font-size: 0.8rem; }
+    .zoom-level { display: none; }
+    .canvas-info { padding: 4px 10px; font-size: 0.75rem; }
+    .control-group input[type="range"]::-webkit-slider-thumb { width: 28px; height: 28px; }
+    .control-group input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; }
+    .mode-tab { padding: 14px 10px; }
+    .export-btn { padding: 14px 10px; }
+}
+@media (max-width: 480px) {
+    .app-header h1 { font-size: 1rem; }
+    .unit-toggle { gap: 10px; }
+    .unit-toggle label { font-size: 0.8rem; }
+    .control-section { padding: 12px; }
+    .control-section h2 { font-size: 0.8rem; }
+    .export-buttons { grid-template-columns: 1fr; }
+    .canvas-toolbar button { min-width: 40px; min-height: 40px; padding: 6px 8px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+    .control-panel { max-height: 85vh; }
+    .panel-toggle { bottom: 10px; left: 10px; width: 48px; height: 48px; font-size: 20px; }
+}
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .control-panel { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+    .panel-toggle { bottom: calc(20px + env(safe-area-inset-bottom)); }
+}
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Rocket Section Generator</h1>
+            <div class="unit-toggle">
+                <label><input type="radio" name="units" value="mm" checked> mm</label>
+                <label><input type="radio" name="units" value="inch"> inch</label>
+            </div>
+        </header>
+        <div class="main-content">
+            <aside class="control-panel">
+                <div class="control-section">
+                    <h2>Design Mode</h2>
+                    <div class="mode-tabs">
+                        <button class="mode-tab active" data-mode="nosecone">Nose Cone</button>
+                        <button class="mode-tab" data-mode="fin">Fin</button>
+                    </div>
+                </div>
+                <div id="nosecone-controls" class="control-section">
+                    <h2>Nose Cone Profile</h2>
+                    <div class="control-group">
+                        <label for="nosecone-type">Profile Type</label>
+                        <select id="nosecone-type">
+                            <option value="conical">Conical</option>
+                            <option value="ogive">Tangent Ogive</option>
+                            <option value="secant-ogive">Secant Ogive</option>
+                            <option value="elliptical">Elliptical</option>
+                            <option value="parabolic">Parabolic</option>
+                            <option value="power">Power Series</option>
+                            <option value="haack">Haack Series (LD-Haack)</option>
+                            <option value="vonkarman">Von Karman</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="nc-length">Length: <span id="nc-length-val">100</span> <span class="unit">mm</span></label>
+                        <input type="range" id="nc-length" min="20" max="300" value="100" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="nc-diameter">Base Diameter: <span id="nc-diameter-val">40</span> <span class="unit">mm</span></label>
+                        <input type="range" id="nc-diameter" min="10" max="150" value="40" step="1">
+                    </div>
+                    <div id="nc-shape-params">
+                        <div class="control-group" id="nc-k-factor-group" style="display: none;">
+                            <label for="nc-k-factor">K Factor: <span id="nc-k-factor-val">0.5</span></label>
+                            <input type="range" id="nc-k-factor" min="0" max="1" value="0.5" step="0.01">
+                        </div>
+                        <div class="control-group" id="nc-power-group" style="display: none;">
+                            <label for="nc-power">Power (n): <span id="nc-power-val">0.5</span></label>
+                            <input type="range" id="nc-power" min="0.1" max="1" value="0.5" step="0.01">
+                        </div>
+                        <div class="control-group" id="nc-haack-c-group" style="display: none;">
+                            <label for="nc-haack-c">C Factor: <span id="nc-haack-c-val">0.33</span></label>
+                            <input type="range" id="nc-haack-c" min="0" max="0.67" value="0.33" step="0.01">
+                        </div>
+                        <div class="control-group" id="nc-ogive-radius-group" style="display: none;">
+                            <label for="nc-ogive-radius">Ogive Radius: <span id="nc-ogive-radius-val">200</span> <span class="unit">mm</span></label>
+                            <input type="range" id="nc-ogive-radius" min="50" max="500" value="200" step="1">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="nc-shoulder">Shoulder Length: <span id="nc-shoulder-val">20</span> <span class="unit">mm</span></label>
+                        <input type="range" id="nc-shoulder" min="0" max="50" value="20" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="nc-wall">Wall Thickness: <span id="nc-wall-val">3</span> <span class="unit">mm</span></label>
+                        <input type="range" id="nc-wall" min="1" max="10" value="3" step="0.5">
+                    </div>
+                </div>
+                <div id="fin-controls" class="control-section" style="display: none;">
+                    <h2>Fin Planform</h2>
+                    <div class="control-group">
+                        <label for="fin-planform">Planform Shape</label>
+                        <select id="fin-planform">
+                            <option value="trapezoidal">Trapezoidal</option>
+                            <option value="clipped-delta">Clipped Delta</option>
+                            <option value="rectangular">Rectangular</option>
+                            <option value="elliptical">Elliptical</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="fin-root">Root Chord: <span id="fin-root-val">80</span> <span class="unit">mm</span></label>
+                        <input type="range" id="fin-root" min="20" max="200" value="80" step="1">
+                    </div>
+                    <div class="control-group" id="fin-tip-group">
+                        <label for="fin-tip">Tip Chord: <span id="fin-tip-val">40</span> <span class="unit">mm</span></label>
+                        <input type="range" id="fin-tip" min="0" max="150" value="40" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label for="fin-span">Span: <span id="fin-span-val">60</span> <span class="unit">mm</span></label>
+                        <input type="range" id="fin-span" min="10" max="150" value="60" step="1">
+                    </div>
+                    <div class="control-group" id="fin-sweep-group">
+                        <label for="fin-sweep">Sweep Angle: <span id="fin-sweep-val">30</span>&deg;</label>
+                        <input type="range" id="fin-sweep" min="0" max="60" value="30" step="1">
+                    </div>
+                    <h2>Airfoil Cross-Section</h2>
+                    <div class="control-group">
+                        <label for="fin-airfoil">Airfoil Type</label>
+                        <select id="fin-airfoil">
+                            <option value="flat">Flat Plate</option>
+                            <option value="beveled">Beveled (Double Wedge)</option>
+                            <option value="diamond">Diamond</option>
+                            <option value="naca0006">NACA 0006</option>
+                            <option value="naca0009">NACA 0009</option>
+                            <option value="naca0012">NACA 0012</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="fin-thickness">Thickness: <span id="fin-thickness-val">3</span> <span class="unit">mm</span></label>
+                        <input type="range" id="fin-thickness" min="1" max="15" value="3" step="0.5">
+                    </div>
+                </div>
+                <div class="control-section">
+                    <h2>Export</h2>
+                    <div class="control-group">
+                        <label for="export-points">Resolution (points)</label>
+                        <input type="number" id="export-points" value="100" min="20" max="500" step="10">
+                    </div>
+                    <div class="export-buttons">
+                        <button id="export-coords" class="export-btn">Coordinates (TXT)</button>
+                        <button id="export-svg" class="export-btn">SVG</button>
+                        <button id="export-dxf" class="export-btn">DXF</button>
+                        <button id="export-gcode" class="export-btn">G-code</button>
+                    </div>
+                </div>
+                <div id="gcode-options" class="control-section" style="display: none;">
+                    <h2>G-code Options</h2>
+                    <div class="control-group">
+                        <label for="gcode-feedrate">Feed Rate: <span id="gcode-feedrate-val">100</span> <span class="unit">mm</span>/min</label>
+                        <input type="range" id="gcode-feedrate" min="10" max="500" value="100" step="10">
+                    </div>
+                    <div class="control-group">
+                        <label for="gcode-spindle">Spindle Speed: <span id="gcode-spindle-val">1000</span> RPM</label>
+                        <input type="range" id="gcode-spindle" min="100" max="5000" value="1000" step="100">
+                    </div>
+                    <div class="control-group">
+                        <label for="gcode-stock">Stock Allowance: <span id="gcode-stock-val">1</span> <span class="unit">mm</span></label>
+                        <input type="range" id="gcode-stock" min="0" max="5" value="1" step="0.5">
+                    </div>
+                    <div class="control-group">
+                        <label for="gcode-passes">Roughing Passes</label>
+                        <input type="number" id="gcode-passes" value="3" min="1" max="10">
+                    </div>
+                    <div class="control-group">
+                        <label><input type="checkbox" id="gcode-facing" checked> Include Facing</label>
+                    </div>
+                </div>
+            </aside>
+            <main class="canvas-panel">
+                <div class="canvas-toolbar">
+                    <button id="zoom-in" title="Zoom In">+</button>
+                    <button id="zoom-out" title="Zoom Out">-</button>
+                    <button id="zoom-fit" title="Fit to View">Fit</button>
+                    <button id="toggle-grid" title="Toggle Grid">Grid</button>
+                    <button id="toggle-dims" title="Toggle Dimensions">Dims</button>
+                    <span class="zoom-level">Zoom: <span id="zoom-percent">100</span>%</span>
+                </div>
+                <div class="canvas-container"><canvas id="main-canvas"></canvas></div>
+                <div class="canvas-info"><span id="mouse-coords">X: 0, Y: 0</span></div>
+            </main>
+        </div>
+        <button id="panel-toggle" class="panel-toggle" aria-label="Toggle Controls"><span class="toggle-icon">&#9881;</span></button>
+    </div>
+<script>
+// Nose Cone Geometry
+const NoseCones={generateProfile(type,params,numPoints=100){const{length,diameter,kFactor,power,haackC,ogiveRadius}=params;const radius=diameter/2;const points=[];for(let i=0;i<=numPoints;i++){const x=(i/numPoints)*length;const y=this.calculateRadius(type,x,length,radius,{kFactor,power,haackC,ogiveRadius});points.push({x,y})}return points},generateCrossSection(type,params,numPoints=100){const{length,diameter,shoulderLength,wallThickness}=params;const radius=diameter/2;const outerPoints=this.generateProfile(type,params,numPoints);const fullOuter=[];if(shoulderLength>0){fullOuter.push({x:length+shoulderLength,y:radius});fullOuter.push({x:length,y:radius})}fullOuter.push(...outerPoints.reverse());const innerPoints=[];if(wallThickness>0){for(let i=0;i<=numPoints;i++){const x=(i/numPoints)*length;const outerY=this.calculateRadius(type,x,length,radius,params);const innerY=Math.max(0,outerY-wallThickness);if(outerY>wallThickness*0.5){innerPoints.push({x,y:innerY})}}if(shoulderLength>0){const innerRadius=radius-wallThickness;if(innerRadius>0){innerPoints.push({x:length,y:innerRadius});innerPoints.push({x:length+shoulderLength,y:innerRadius})}}}return{outer:fullOuter,inner:innerPoints,centerline:[{x:0,y:0},{x:length+shoulderLength,y:0}]}},calculateRadius(type,x,length,baseRadius,params={}){const L=length;const R=baseRadius;const xRatio=x/L;switch(type){case'conical':return R*xRatio;case'ogive':const rho=(R*R+L*L)/(2*R);return Math.sqrt(rho*rho-Math.pow(L-x,2))+R-rho;case'secant-ogive':{const ogiveR=params.ogiveRadius||(R*R+L*L)/(2*R);if(x===0)return 0;const y=Math.sqrt(ogiveR*ogiveR-Math.pow(L-x,2))-Math.sqrt(ogiveR*ogiveR-L*L);return Math.max(0,y)}case'elliptical':return R*Math.sqrt(1-Math.pow(1-xRatio,2));case'parabolic':{const K=params.kFactor!==undefined?params.kFactor:0.5;return R*((2*xRatio-K*xRatio*xRatio)/(2-K))}case'power':{const n=params.power!==undefined?params.power:0.5;return R*Math.pow(xRatio,n)}case'haack':{const C=params.haackC!==undefined?params.haackC:1/3;const theta=Math.acos(1-2*xRatio);return(R/Math.sqrt(Math.PI))*Math.sqrt(theta-Math.sin(2*theta)/2+C*Math.pow(Math.sin(theta),3))}case'vonkarman':{const theta=Math.acos(1-2*xRatio);return(R/Math.sqrt(Math.PI))*Math.sqrt(theta-Math.sin(2*theta)/2)}default:return R*xRatio}}};
+
+// Fin Geometry
+const Fins={generatePlanform(type,params){const{rootChord,tipChord,span,sweepAngle}=params;switch(type){case'trapezoidal':return this.trapezoidal(rootChord,tipChord,span,sweepAngle);case'clipped-delta':return this.clippedDelta(rootChord,tipChord,span,sweepAngle);case'rectangular':return this.rectangular(rootChord,span);case'elliptical':return this.elliptical(rootChord,span);default:return this.trapezoidal(rootChord,tipChord,span,sweepAngle)}},trapezoidal(rootChord,tipChord,span,sweepAngle){const sweepOffset=span*Math.tan(sweepAngle*Math.PI/180);return[{x:0,y:0},{x:rootChord,y:0},{x:sweepOffset+tipChord,y:span},{x:sweepOffset,y:span},{x:0,y:0}]},clippedDelta(rootChord,tipChord,span,sweepAngle){const sweepOffset=span*Math.tan(sweepAngle*Math.PI/180);const teOffset=sweepOffset*0.3;return[{x:0,y:0},{x:rootChord,y:0},{x:teOffset+tipChord,y:span},{x:sweepOffset,y:span},{x:0,y:0}]},rectangular(rootChord,span){return[{x:0,y:0},{x:rootChord,y:0},{x:rootChord,y:span},{x:0,y:span},{x:0,y:0}]},elliptical(rootChord,span,numPoints=50){const points=[];const a=rootChord/2;const b=span;for(let i=0;i<=numPoints;i++){const angle=Math.PI*(i/numPoints);const x=a+a*Math.cos(angle);const y=b*Math.sin(angle);points.push({x,y})}points.push({x:rootChord,y:0});return points}};
+
+// Airfoils
+const Airfoils={generateProfile(type,chord,thickness,numPoints=50){switch(type){case'flat':return this.flatPlate(chord,thickness,numPoints);case'beveled':return this.beveledPlate(chord,thickness,numPoints);case'diamond':return this.diamond(chord,thickness,numPoints);case'naca0006':return this.naca4Digit(chord,0,0,6,numPoints);case'naca0009':return this.naca4Digit(chord,0,0,9,numPoints);case'naca0012':return this.naca4Digit(chord,0,0,12,numPoints);default:return this.flatPlate(chord,thickness,numPoints)}},flatPlate(chord,thickness,numPoints){const halfThick=thickness/2;const upper=[];const lower=[];const leRadius=halfThick;for(let i=0;i<=10;i++){const angle=Math.PI/2+(Math.PI/2)*(i/10);upper.push({x:leRadius+leRadius*Math.cos(angle),y:leRadius*Math.sin(angle)})}upper.push({x:chord-halfThick,y:halfThick});upper.push({x:chord,y:0});for(let i=upper.length-2;i>=0;i--){lower.push({x:upper[i].x,y:-upper[i].y})}return{upper,lower,all:[...upper,...lower.slice(1)]}},beveledPlate(chord,thickness,numPoints){const halfThick=thickness/2;const maxThickPos=chord*0.3;const upper=[{x:0,y:0},{x:maxThickPos,y:halfThick},{x:chord,y:0}];const lower=[{x:chord,y:0},{x:maxThickPos,y:-halfThick},{x:0,y:0}];return{upper,lower,all:[...upper,...lower.slice(1,-1)]}},diamond(chord,thickness,numPoints){const halfThick=thickness/2;const midChord=chord/2;const upper=[{x:0,y:0},{x:midChord,y:halfThick},{x:chord,y:0}];const lower=[{x:chord,y:0},{x:midChord,y:-halfThick},{x:0,y:0}];return{upper,lower,all:[...upper,...lower.slice(1,-1)]}},naca4Digit(chord,m,p,t,numPoints){const upper=[];const lower=[];const tFrac=t/100;for(let i=0;i<=numPoints;i++){const beta=(i/numPoints)*Math.PI;const xc=(1-Math.cos(beta))/2;const x=xc*chord;const yt=(tFrac/0.2)*chord*(0.2969*Math.sqrt(xc)-0.1260*xc-0.3516*xc*xc+0.2843*xc*xc*xc-0.1015*xc*xc*xc*xc);if(m===0){upper.push({x,y:yt});lower.push({x,y:-yt})}}const all=[...upper,...lower.reverse().slice(1)];return{upper,lower,all}}};
+
+// Canvas Renderer
+class CanvasRenderer{constructor(canvasId){this.canvas=document.getElementById(canvasId);this.ctx=this.canvas.getContext('2d');this.zoom=1;this.panX=0;this.panY=0;this.showGrid=true;this.showDimensions=true;this.isDragging=false;this.lastMouseX=0;this.lastMouseY=0;this.touchStartDistance=0;this.touchStartZoom=1;this.lastTouchX=0;this.lastTouchY=0;this.isTouching=false;this.colors={background:'#0a0a1a',grid:'#1a1a3a',gridMajor:'#2a2a5a',profile:'#e94560',profileFill:'rgba(233,69,96,0.1)',inner:'#4ade80',innerFill:'rgba(74,222,128,0.1)',centerline:'#666',dimension:'#a0a0a0',axis:'#444'};this.units='mm';this.pixelsPerUnit=3;this.setupCanvas();this.setupEventListeners()}setupCanvas(){this.resizeCanvas();window.addEventListener('resize',()=>this.resizeCanvas())}resizeCanvas(){const container=this.canvas.parentElement;const rect=container.getBoundingClientRect();this.canvas.width=rect.width;this.canvas.height=rect.height;if(this.currentData){this.draw(this.currentData)}}setupEventListeners(){this.canvas.addEventListener('wheel',(e)=>{e.preventDefault();const zoomFactor=e.deltaY>0?0.9:1.1;const rect=this.canvas.getBoundingClientRect();const mouseX=e.clientX-rect.left;const mouseY=e.clientY-rect.top;this.panX=mouseX-(mouseX-this.panX)*zoomFactor;this.panY=mouseY-(mouseY-this.panY)*zoomFactor;this.zoom*=zoomFactor;this.zoom=Math.max(0.1,Math.min(10,this.zoom));this.draw(this.currentData);this.updateZoomDisplay()});this.canvas.addEventListener('mousedown',(e)=>{this.isDragging=true;this.lastMouseX=e.clientX;this.lastMouseY=e.clientY;this.canvas.style.cursor='grabbing'});this.canvas.addEventListener('mousemove',(e)=>{const rect=this.canvas.getBoundingClientRect();const mouseX=e.clientX-rect.left;const mouseY=e.clientY-rect.top;const worldCoords=this.screenToWorld(mouseX,mouseY);this.updateCoordinateDisplay(worldCoords.x,worldCoords.y);if(this.isDragging){const dx=e.clientX-this.lastMouseX;const dy=e.clientY-this.lastMouseY;this.panX+=dx;this.panY+=dy;this.lastMouseX=e.clientX;this.lastMouseY=e.clientY;this.draw(this.currentData)}});this.canvas.addEventListener('mouseup',()=>{this.isDragging=false;this.canvas.style.cursor='crosshair'});this.canvas.addEventListener('mouseleave',()=>{this.isDragging=false;this.canvas.style.cursor='crosshair'});this.setupTouchEvents()}setupTouchEvents(){this.canvas.addEventListener('touchstart',(e)=>{e.preventDefault();if(e.touches.length===1){this.isTouching=true;this.lastTouchX=e.touches[0].clientX;this.lastTouchY=e.touches[0].clientY}else if(e.touches.length===2){this.touchStartDistance=this.getTouchDistance(e.touches);this.touchStartZoom=this.zoom;const center=this.getTouchCenter(e.touches);this.lastTouchX=center.x;this.lastTouchY=center.y}},{passive:false});this.canvas.addEventListener('touchmove',(e)=>{e.preventDefault();if(e.touches.length===1&&this.isTouching){const touch=e.touches[0];const dx=touch.clientX-this.lastTouchX;const dy=touch.clientY-this.lastTouchY;this.panX+=dx;this.panY+=dy;this.lastTouchX=touch.clientX;this.lastTouchY=touch.clientY;this.draw(this.currentData)}else if(e.touches.length===2){const currentDistance=this.getTouchDistance(e.touches);const center=this.getTouchCenter(e.touches);const rect=this.canvas.getBoundingClientRect();const scale=currentDistance/this.touchStartDistance;const newZoom=this.touchStartZoom*scale;const clampedZoom=Math.max(0.1,Math.min(10,newZoom));const centerX=center.x-rect.left;const centerY=center.y-rect.top;const zoomFactor=clampedZoom/this.zoom;this.panX=centerX-(centerX-this.panX)*zoomFactor;this.panY=centerY-(centerY-this.panY)*zoomFactor;this.zoom=clampedZoom;const dx=center.x-this.lastTouchX;const dy=center.y-this.lastTouchY;this.panX+=dx;this.panY+=dy;this.lastTouchX=center.x;this.lastTouchY=center.y;this.draw(this.currentData);this.updateZoomDisplay()}},{passive:false});this.canvas.addEventListener('touchend',(e)=>{if(e.touches.length===0){this.isTouching=false}else if(e.touches.length===1){this.lastTouchX=e.touches[0].clientX;this.lastTouchY=e.touches[0].clientY;this.isTouching=true}});this.canvas.addEventListener('touchcancel',()=>{this.isTouching=false})}getTouchDistance(touches){const dx=touches[0].clientX-touches[1].clientX;const dy=touches[0].clientY-touches[1].clientY;return Math.sqrt(dx*dx+dy*dy)}getTouchCenter(touches){return{x:(touches[0].clientX+touches[1].clientX)/2,y:(touches[0].clientY+touches[1].clientY)/2}}worldToScreen(x,y){const scale=this.pixelsPerUnit*this.zoom;return{x:this.panX+x*scale,y:this.panY-y*scale}}screenToWorld(sx,sy){const scale=this.pixelsPerUnit*this.zoom;return{x:(sx-this.panX)/scale,y:-(sy-this.panY)/scale}}updateZoomDisplay(){const zoomPercent=document.getElementById('zoom-percent');if(zoomPercent){zoomPercent.textContent=Math.round(this.zoom*100)}}updateCoordinateDisplay(x,y){const coordsEl=document.getElementById('mouse-coords');if(coordsEl){const unit=this.units==='mm'?'mm':'in';const factor=this.units==='mm'?1:1/25.4;coordsEl.textContent=`X: ${(x*factor).toFixed(2)} ${unit}, Y: ${(y*factor).toFixed(2)} ${unit}`}}setUnits(units){this.units=units;if(this.currentData){this.draw(this.currentData)}}clear(){this.ctx.fillStyle=this.colors.background;this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height)}drawGrid(){if(!this.showGrid)return;const ctx=this.ctx;const scale=this.pixelsPerUnit*this.zoom;let gridSpacing=10;if(this.zoom<0.3)gridSpacing=50;else if(this.zoom<0.7)gridSpacing=20;else if(this.zoom>2)gridSpacing=5;else if(this.zoom>4)gridSpacing=1;const majorEvery=5;const topLeft=this.screenToWorld(0,0);const bottomRight=this.screenToWorld(this.canvas.width,this.canvas.height);const startX=Math.floor(topLeft.x/gridSpacing)*gridSpacing;const endX=Math.ceil(bottomRight.x/gridSpacing)*gridSpacing;const startY=Math.floor(bottomRight.y/gridSpacing)*gridSpacing;const endY=Math.ceil(topLeft.y/gridSpacing)*gridSpacing;ctx.lineWidth=1;for(let x=startX;x<=endX;x+=gridSpacing){const screenX=this.worldToScreen(x,0).x;ctx.strokeStyle=(x%(gridSpacing*majorEvery)===0)?this.colors.gridMajor:this.colors.grid;ctx.beginPath();ctx.moveTo(screenX,0);ctx.lineTo(screenX,this.canvas.height);ctx.stroke()}for(let y=startY;y<=endY;y+=gridSpacing){const screenY=this.worldToScreen(0,y).y;ctx.strokeStyle=(y%(gridSpacing*majorEvery)===0)?this.colors.gridMajor:this.colors.grid;ctx.beginPath();ctx.moveTo(0,screenY);ctx.lineTo(this.canvas.width,screenY);ctx.stroke()}ctx.strokeStyle=this.colors.axis;ctx.lineWidth=2;const axisY=this.worldToScreen(0,0).y;if(axisY>=0&&axisY<=this.canvas.height){ctx.beginPath();ctx.moveTo(0,axisY);ctx.lineTo(this.canvas.width,axisY);ctx.stroke()}const axisX=this.worldToScreen(0,0).x;if(axisX>=0&&axisX<=this.canvas.width){ctx.beginPath();ctx.moveTo(axisX,0);ctx.lineTo(axisX,this.canvas.height);ctx.stroke()}}drawProfile(points,color,fillColor,closed=true){if(!points||points.length<2)return;const ctx=this.ctx;ctx.beginPath();const start=this.worldToScreen(points[0].x,points[0].y);ctx.moveTo(start.x,start.y);for(let i=1;i<points.length;i++){const p=this.worldToScreen(points[i].x,points[i].y);ctx.lineTo(p.x,p.y)}if(closed){ctx.closePath()}if(fillColor){ctx.fillStyle=fillColor;ctx.fill()}ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke()}drawCenterline(points){if(!points||points.length<2)return;const ctx=this.ctx;ctx.strokeStyle=this.colors.centerline;ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();const start=this.worldToScreen(points[0].x,points[0].y);ctx.moveTo(start.x,start.y);for(let i=1;i<points.length;i++){const p=this.worldToScreen(points[i].x,points[i].y);ctx.lineTo(p.x,p.y)}ctx.stroke();ctx.setLineDash([])}drawDimension(x1,y1,x2,y2,offset,label){if(!this.showDimensions)return;const ctx=this.ctx;const p1=this.worldToScreen(x1,y1);const p2=this.worldToScreen(x2,y2);const dx=p2.x-p1.x;const dy=p2.y-p1.y;const len=Math.sqrt(dx*dx+dy*dy);const nx=-dy/len*offset;const ny=dx/len*offset;ctx.strokeStyle=this.colors.dimension;ctx.fillStyle=this.colors.dimension;ctx.lineWidth=1;ctx.font='12px sans-serif';ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p1.x+nx,p1.y+ny);ctx.moveTo(p2.x,p2.y);ctx.lineTo(p2.x+nx,p2.y+ny);ctx.stroke();ctx.beginPath();ctx.moveTo(p1.x+nx*0.8,p1.y+ny*0.8);ctx.lineTo(p2.x+nx*0.8,p2.y+ny*0.8);ctx.stroke();const arrowSize=8;this.drawArrowhead(p1.x+nx*0.8,p1.y+ny*0.8,Math.atan2(dy,dx),arrowSize);this.drawArrowhead(p2.x+nx*0.8,p2.y+ny*0.8,Math.atan2(-dy,-dx),arrowSize);const midX=(p1.x+p2.x)/2+nx*0.8;const midY=(p1.y+p2.y)/2+ny*0.8;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(label,midX,midY-3)}drawArrowhead(x,y,angle,size){const ctx=this.ctx;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-size*Math.cos(angle-0.3),y-size*Math.sin(angle-0.3));ctx.lineTo(x-size*Math.cos(angle+0.3),y-size*Math.sin(angle+0.3));ctx.closePath();ctx.fill()}drawNoseCone(crossSection,params){this.currentData={type:'nosecone',crossSection,params};this.clear();this.drawGrid();const{outer,inner,centerline}=crossSection;this.drawProfile(outer,this.colors.profile,this.colors.profileFill,false);const lowerOuter=outer.map(p=>({x:p.x,y:-p.y}));this.drawProfile(lowerOuter,this.colors.profile,this.colors.profileFill,false);if(inner&&inner.length>0){this.drawProfile(inner,this.colors.inner,this.colors.innerFill,false);const lowerInner=inner.map(p=>({x:p.x,y:-p.y}));this.drawProfile(lowerInner,this.colors.inner,this.colors.innerFill,false)}this.drawCenterline(centerline);if(this.showDimensions){const factor=this.units==='mm'?1:1/25.4;const unit=this.units==='mm'?'mm':'in';const totalLength=params.length+params.shoulderLength;this.drawDimension(0,0,totalLength,0,-(params.diameter/2+20),`${(totalLength*factor).toFixed(1)} ${unit}`);this.drawDimension(params.length,-params.diameter/2,params.length,params.diameter/2,30,`Ø${(params.diameter*factor).toFixed(1)} ${unit}`)}}drawFinPlanform(planform,params){this.currentData={type:'fin-planform',planform,params};this.clear();this.drawGrid();this.drawProfile(planform,this.colors.profile,this.colors.profileFill,true);if(this.showDimensions){const factor=this.units==='mm'?1:1/25.4;const unit=this.units==='mm'?'mm':'in';this.drawDimension(0,0,params.rootChord,0,-20,`${(params.rootChord*factor).toFixed(1)} ${unit}`);this.drawDimension(params.rootChord+10,0,params.rootChord+10,params.span,20,`${(params.span*factor).toFixed(1)} ${unit}`)}}draw(data){if(!data)return;this.currentData=data;switch(data.type){case'nosecone':this.drawNoseCone(data.crossSection,data.params);break;case'fin-planform':this.drawFinPlanform(data.planform,data.params);break}}zoomIn(){this.zoom*=1.2;this.zoom=Math.min(10,this.zoom);this.draw(this.currentData);this.updateZoomDisplay()}zoomOut(){this.zoom*=0.8;this.zoom=Math.max(0.1,this.zoom);this.draw(this.currentData);this.updateZoomDisplay()}fitToView(bounds){if(!bounds){if(!this.currentData)return;let points=[];if(this.currentData.type==='nosecone'){points=this.currentData.crossSection.outer}else if(this.currentData.type==='fin-planform'){points=this.currentData.planform}if(points.length===0)return;const xs=points.map(p=>p.x);const ys=points.map(p=>p.y);bounds={minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)};if(this.currentData.type==='nosecone'){bounds.minY=-bounds.maxY}}const padding=50;const width=bounds.maxX-bounds.minX;const height=bounds.maxY-bounds.minY;const scaleX=(this.canvas.width-padding*2)/(width*this.pixelsPerUnit);const scaleY=(this.canvas.height-padding*2)/(height*this.pixelsPerUnit);this.zoom=Math.min(scaleX,scaleY);this.zoom=Math.max(0.1,Math.min(10,this.zoom));const centerX=(bounds.minX+bounds.maxX)/2;const centerY=(bounds.minY+bounds.maxY)/2;this.panX=this.canvas.width/2-centerX*this.pixelsPerUnit*this.zoom;this.panY=this.canvas.height/2+centerY*this.pixelsPerUnit*this.zoom;this.draw(this.currentData);this.updateZoomDisplay()}toggleGrid(){this.showGrid=!this.showGrid;this.draw(this.currentData);return this.showGrid}toggleDimensions(){this.showDimensions=!this.showDimensions;this.draw(this.currentData);return this.showDimensions}}
+
+// Export Modules
+const CoordsExport={generate(points,options={}){const{units='mm',precision=4,separator='\t',includeHeader=true,includeIndex=false}=options;const factor=units==='inch'?1/25.4:1;const lines=[];if(includeHeader){lines.push(`# Coordinate Export`);lines.push(`# Units: ${units}`);lines.push(`# Points: ${points.length}`);lines.push('#')}points.forEach((p,i)=>{const x=(p.x*factor).toFixed(precision);const y=(p.y*factor).toFixed(precision);lines.push(includeIndex?`${i}${separator}${x}${separator}${y}`:`${x}${separator}${y}`)});return lines.join('\n')},exportNoseCone(crossSection,params,options={}){const{outer,inner}=crossSection;const lines=[];lines.push(`# Nose Cone Profile Export`);lines.push(`# Length: ${params.length} mm`);lines.push(`# Diameter: ${params.diameter} mm`);lines.push('#');lines.push('# OUTER PROFILE');lines.push(this.generate(outer,{...options,includeHeader:false}));if(inner&&inner.length>0){lines.push('#');lines.push('# INNER PROFILE');lines.push(this.generate(inner,{...options,includeHeader:false}))}return lines.join('\n')},exportFin(planform,params,options={}){const lines=[];lines.push(`# Fin Planform Export`);lines.push(`# Root Chord: ${params.rootChord} mm`);lines.push('#');lines.push(this.generate(planform,{...options,includeHeader:false}));return lines.join('\n')},download(content,filename='coordinates.txt'){const blob=new Blob([content],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)}};
+
+const SVGExport={exportNoseCone(crossSection,params){const{outer,inner,centerline}=crossSection;const{diameter,length,shoulderLength}=params;const totalLength=length+shoulderLength;const margin=30;const width=800;const height=500;const scaleX=(width-margin*2)/totalLength;const scaleY=(height-margin*2)/diameter;const scale=Math.min(scaleX,scaleY);const transform=(p)=>({x:margin+p.x*scale,y:height/2-p.y*scale});const upperPath=outer.map((p,i)=>{const tp=transform(p);return(i===0?'M':'L')+`${tp.x.toFixed(3)},${tp.y.toFixed(3)}`}).join(' ');const lowerPath=outer.slice().reverse().map((p)=>{const tp=transform({x:p.x,y:-p.y});return'L'+`${tp.x.toFixed(3)},${tp.y.toFixed(3)}`}).join(' ');const outerPathData=upperPath+' '+lowerPath+' Z';let innerPathData='';if(inner&&inner.length>0){const innerUpper=inner.map((p,i)=>{const tp=transform(p);return(i===0?'M':'L')+`${tp.x.toFixed(3)},${tp.y.toFixed(3)}`}).join(' ');const innerLower=inner.slice().reverse().map(p=>{const tp=transform({x:p.x,y:-p.y});return'L'+`${tp.x.toFixed(3)},${tp.y.toFixed(3)}`}).join(' ');innerPathData=innerUpper+' '+innerLower+' Z'}const clStart=transform(centerline[0]);const clEnd=transform(centerline[1]);return`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n<title>Nose Cone Profile</title>\n<defs><style>.outer{stroke:#000;stroke-width:1.5;fill:none}.inner{stroke:#666;stroke-width:1;fill:none;stroke-dasharray:4,2}.centerline{stroke:#999;stroke-width:0.5;stroke-dasharray:8,4}</style></defs>\n<line x1="${clStart.x}" y1="${clStart.y}" x2="${clEnd.x}" y2="${clEnd.y}" class="centerline"/>\n<path d="${outerPathData}" class="outer"/>\n${innerPathData?`<path d="${innerPathData}" class="inner"/>`:''}\n<text x="${margin}" y="${height-10}" style="font:12px Arial;fill:#333">Length: ${totalLength}mm | Diameter: ${diameter}mm</text>\n</svg>`},exportFin(planform,params){const{rootChord,tipChord,span,sweepAngle}=params;const margin=30;const width=600;const height=600;const scaleX=(width-margin*2)/rootChord;const scaleY=(height-margin*2)/span;const scale=Math.min(scaleX,scaleY);const transform=(p)=>({x:margin+p.x*scale,y:height-margin-p.y*scale});const pathData=planform.map((p,i)=>{const tp=transform(p);return(i===0?'M':'L')+`${tp.x.toFixed(3)},${tp.y.toFixed(3)}`}).join(' ');return`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n<title>Fin Planform</title>\n<path d="${pathData}" style="stroke:#000;stroke-width:1.5;fill:rgba(0,0,0,0.05)"/>\n<text x="${margin}" y="${height-10}" style="font:12px Arial;fill:#333">Root: ${rootChord}mm | Span: ${span}mm</text>\n</svg>`},download(content,filename='profile.svg'){const blob=new Blob([content],{type:'image/svg+xml'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)}};
+
+const DXFExport={header(units='mm'){const unitCode=units==='mm'?4:1;return`0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1014\n9\n$INSUNITS\n70\n${unitCode}\n0\nENDSEC\n`},tables(){return`0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLTYPE\n70\n1\n0\nLTYPE\n2\nCONTINUOUS\n70\n0\n3\nSolid line\n72\n65\n73\n0\n40\n0.0\n0\nENDTAB\n0\nTABLE\n2\nLAYER\n70\n2\n0\nLAYER\n2\n0\n70\n0\n62\n7\n6\nCONTINUOUS\n0\nLAYER\n2\nPROFILE\n70\n0\n62\n1\n6\nCONTINUOUS\n0\nENDTAB\n0\nENDSEC\n`},polyline(points,layer='PROFILE',closed=true){let dxf=`0\nLWPOLYLINE\n8\n${layer}\n90\n${points.length}\n70\n${closed?1:0}\n`;points.forEach(p=>{dxf+=`10\n${p.x.toFixed(6)}\n20\n${p.y.toFixed(6)}\n`});return dxf},line(x1,y1,x2,y2,layer='0'){return`0\nLINE\n8\n${layer}\n10\n${x1.toFixed(6)}\n20\n${y1.toFixed(6)}\n11\n${x2.toFixed(6)}\n21\n${y2.toFixed(6)}\n`},entities(content){return`0\nSECTION\n2\nENTITIES\n${content}0\nENDSEC\n`},footer(){return`0\nEOF\n`},exportNoseCone(crossSection,params,options={}){const{outer,inner}=crossSection;const{units='mm'}=options;const factor=units==='inch'?1/25.4:1;let entitiesContent='';const outerScaled=outer.map(p=>({x:p.x*factor,y:p.y*factor}));entitiesContent+=this.polyline(outerScaled,'PROFILE',false);const lowerScaled=outer.map(p=>({x:p.x*factor,y:-p.y*factor}));entitiesContent+=this.polyline(lowerScaled,'PROFILE',false);if(outer.length>0){const first=outer[0];const last=outer[outer.length-1];entitiesContent+=this.line(first.x*factor,first.y*factor,first.x*factor,-first.y*factor,'PROFILE');entitiesContent+=this.line(last.x*factor,last.y*factor,last.x*factor,-last.y*factor,'PROFILE')}if(inner&&inner.length>1){const innerUpperScaled=inner.map(p=>({x:p.x*factor,y:p.y*factor}));entitiesContent+=this.polyline(innerUpperScaled,'0',false);const innerLowerScaled=inner.map(p=>({x:p.x*factor,y:-p.y*factor}));entitiesContent+=this.polyline(innerLowerScaled,'0',false)}const totalLength=(params.length+params.shoulderLength)*factor;entitiesContent+=this.line(0,0,totalLength,0,'0');return this.header(units)+this.tables()+this.entities(entitiesContent)+this.footer()},exportFin(planform,params,options={}){const{units='mm'}=options;const factor=units==='inch'?1/25.4:1;const scaledPlanform=planform.map(p=>({x:p.x*factor,y:p.y*factor}));const entitiesContent=this.polyline(scaledPlanform,'PROFILE',true);return this.header(units)+this.tables()+this.entities(entitiesContent)+this.footer()},download(content,filename='profile.dxf'){const blob=new Blob([content],{type:'application/dxf'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)}};
+
+const GCodeExport={header(options={}){const{units='mm',programNumber=1,comment='Generated by Rocket Section Generator'}=options;const unitCode=units==='mm'?'G21':'G20';return`%\nO${String(programNumber).padStart(4,'0')}\n(${comment})\n(Units: ${units.toUpperCase()})\n${unitCode} (${units==='mm'?'Metric':'Imperial'})\nG90 (Absolute positioning)\nG40 (Cancel cutter compensation)\n`},footer(){return`M05 (Spindle stop)\nG28 U0 W0 (Return to home)\nM30 (Program end)\n%\n`},generateLatheTurning(points,options={}){const{units='mm',feedRate=100,spindleSpeed=1000,stockAllowance=1,roughingPasses=3,finishingAllowance=0.5,includeFacing=true,stockDiameter=null,stockLength=null}=options;const factor=units==='inch'?1/25.4:1;let gcode='';const maxX=Math.max(...points.map(p=>p.y))*2;const maxZ=Math.max(...points.map(p=>p.x));const workDiameter=(stockDiameter||maxX+stockAllowance*2)*factor;const workLength=(stockLength||maxZ+stockAllowance)*factor;gcode+=`(NOSE CONE TURNING OPERATION)\n(Stock diameter: ${workDiameter.toFixed(3)} ${units})\n(Final diameter: ${(maxX*factor).toFixed(3)} ${units})\n\n`;gcode+=`T0101 (Select turning tool)\nS${spindleSpeed} M03 (Spindle on CW at ${spindleSpeed} RPM)\nG00 X${(workDiameter+5).toFixed(3)} Z5.0 (Rapid to start position)\n\n`;if(includeFacing){gcode+=`(FACING OPERATION)\nG00 X${(workDiameter+2).toFixed(3)} Z0.5\nG01 Z0.0 F${feedRate}\nG01 X-1.0 F${feedRate/2} (Face to center)\nG00 Z2.0\nG00 X${(workDiameter+5).toFixed(3)}\n\n`}if(roughingPasses>0){gcode+=`(ROUGHING PASSES - ${roughingPasses} cuts)\n`;const depthOfCut=(workDiameter/2-maxX/2*factor-finishingAllowance*factor)/roughingPasses;for(let pass=1;pass<=roughingPasses;pass++){const currentRadius=workDiameter/2-depthOfCut*pass;gcode+=`(Roughing pass ${pass})\nG00 X${(currentRadius*2+1).toFixed(3)} Z2.0\n`;const roughOffset=finishingAllowance*factor;points.forEach((p,i)=>{const x=(p.y*2*factor)+roughOffset*2;const z=-(p.x*factor);if(x<=currentRadius*2){if(i===0){gcode+=`G00 X${x.toFixed(3)} Z2.0\nG01 Z${z.toFixed(3)} F${feedRate}\n`}else{gcode+=`G01 X${x.toFixed(3)} Z${z.toFixed(3)} F${feedRate}\n`}}});gcode+=`G00 X${(currentRadius*2+2).toFixed(3)}\nG00 Z5.0\n`}gcode+=`\n`}gcode+=`(FINISHING PASS)\nG00 X${(maxX*factor+2).toFixed(3)} Z2.0\n`;points.forEach((p,i)=>{const x=p.y*2*factor;const z=-(p.x*factor);if(i===0){gcode+=`G00 X${x.toFixed(3)} Z2.0\nG01 Z${z.toFixed(3)} F${feedRate/2}\n`}else{gcode+=`G01 X${x.toFixed(3)} Z${z.toFixed(3)} F${feedRate/2}\n`}});gcode+=`G00 X${(maxX*factor+5).toFixed(3)}\nG00 Z5.0\n`;return gcode},generateMillProfile(points,options={}){const{units='mm',feedRate=200,spindleSpeed=3000,depth=3,stepDown=1,safeZ=5}=options;const factor=units==='inch'?1/25.4:1;let gcode='';gcode+=`(FIN PROFILE MILLING OPERATION)\n(Material thickness: ${(depth*factor).toFixed(3)} ${units})\n\n`;gcode+=`T1 M06 (Select end mill)\nS${spindleSpeed} M03 (Spindle on CW)\nG00 Z${(safeZ*factor).toFixed(3)} (Safe height)\n\n`;const passes=Math.ceil(depth/stepDown);const actualStepDown=depth/passes;for(let pass=1;pass<=passes;pass++){const currentZ=-actualStepDown*pass*factor;gcode+=`(Pass ${pass} of ${passes} - Z=${currentZ.toFixed(3)})\n`;const firstPoint=points[0];gcode+=`G00 X${(firstPoint.x*factor).toFixed(3)} Y${(firstPoint.y*factor).toFixed(3)}\nG00 Z${(2*factor).toFixed(3)}\nG01 Z${currentZ.toFixed(3)} F${feedRate/2}\n`;points.slice(1).forEach(p=>{gcode+=`G01 X${(p.x*factor).toFixed(3)} Y${(p.y*factor).toFixed(3)} F${feedRate}\n`});gcode+=`G00 Z${(safeZ*factor).toFixed(3)}\n`}return gcode},exportNoseCone(crossSection,params,options={}){const{outer}=crossSection;const gcode=this.header({units:options.units||'mm',comment:`Nose Cone - ${params.length}mm x Ø${params.diameter}mm`});const turning=this.generateLatheTurning(outer,{...options,stockDiameter:params.diameter+(options.stockAllowance||2)*2,stockLength:params.length+params.shoulderLength+(options.stockAllowance||2)});return gcode+turning+this.footer()},exportFin(planform,params,options={}){const gcode=this.header({units:options.units||'mm',comment:`Fin - Root ${params.rootChord}mm, Span ${params.span}mm`});const milling=this.generateMillProfile(planform,{...options,depth:options.materialThickness||params.thickness||3});return gcode+milling+this.footer()},download(content,filename='program.nc'){const blob=new Blob([content],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)}};
+
+// Main App
+class RocketSectionApp{constructor(){this.canvas=new CanvasRenderer('main-canvas');this.mode='nosecone';this.units='mm';this.noseconeParams={type:'ogive',length:100,diameter:40,kFactor:0.5,power:0.5,haackC:0.33,ogiveRadius:200,shoulderLength:20,wallThickness:3};this.finParams={planform:'trapezoidal',rootChord:80,tipChord:40,span:60,sweepAngle:30,airfoil:'naca0009',thickness:3};this.exportParams={points:100,feedRate:100,spindleSpeed:1000,stockAllowance:1,roughingPasses:3,includeFacing:true};this.init()}init(){this.bindEvents();this.setupMobilePanel();this.updateUI();this.updateCanvas();setTimeout(()=>this.canvas.fitToView(),100);window.addEventListener('orientationchange',()=>{setTimeout(()=>this.canvas.fitToView(),200)})}setupMobilePanel(){const panelToggle=document.getElementById('panel-toggle');const controlPanel=document.querySelector('.control-panel');if(!panelToggle||!controlPanel)return;panelToggle.addEventListener('click',()=>{controlPanel.classList.toggle('open');panelToggle.classList.toggle('active')});document.addEventListener('click',(e)=>{if(window.innerWidth<=768){if(!controlPanel.contains(e.target)&&!panelToggle.contains(e.target)&&controlPanel.classList.contains('open')){controlPanel.classList.remove('open');panelToggle.classList.remove('active')}}});this.closeControlPanelOnExport=()=>{if(window.innerWidth<=768){controlPanel.classList.remove('open');panelToggle.classList.remove('active')}};let touchStartY=0;controlPanel.addEventListener('touchstart',(e)=>{touchStartY=e.touches[0].clientY},{passive:true});controlPanel.addEventListener('touchmove',(e)=>{const touchY=e.touches[0].clientY;const diff=touchY-touchStartY;if(diff>50&&controlPanel.classList.contains('open')){controlPanel.classList.remove('open');panelToggle.classList.remove('active')}},{passive:true})}bindEvents(){document.querySelectorAll('.mode-tab').forEach(tab=>{tab.addEventListener('click',(e)=>{document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');this.mode=e.target.dataset.mode;this.updateUI();this.updateCanvas();setTimeout(()=>this.canvas.fitToView(),50)})});document.querySelectorAll('input[name="units"]').forEach(radio=>{radio.addEventListener('change',(e)=>{this.units=e.target.value;this.canvas.setUnits(this.units);this.updateUnitLabels()})});this.bindNoseConeControls();this.bindFinControls();document.getElementById('zoom-in').addEventListener('click',()=>this.canvas.zoomIn());document.getElementById('zoom-out').addEventListener('click',()=>this.canvas.zoomOut());document.getElementById('zoom-fit').addEventListener('click',()=>this.canvas.fitToView());document.getElementById('toggle-grid').addEventListener('click',(e)=>{const active=this.canvas.toggleGrid();e.target.classList.toggle('active',active)});document.getElementById('toggle-dims').addEventListener('click',(e)=>{const active=this.canvas.toggleDimensions();e.target.classList.toggle('active',active)});document.getElementById('export-coords').addEventListener('click',()=>this.exportCoords());document.getElementById('export-svg').addEventListener('click',()=>this.exportSVG());document.getElementById('export-dxf').addEventListener('click',()=>this.exportDXF());document.getElementById('export-gcode').addEventListener('click',()=>this.toggleGCodeOptions());this.bindGCodeControls();document.getElementById('export-points').addEventListener('change',(e)=>{this.exportParams.points=parseInt(e.target.value)||100})}bindNoseConeControls(){document.getElementById('nosecone-type').addEventListener('change',(e)=>{this.noseconeParams.type=e.target.value;this.updateNoseConeShapeParams();this.updateCanvas()});this.bindSlider('nc-length',(val)=>{this.noseconeParams.length=val;this.updateCanvas()});this.bindSlider('nc-diameter',(val)=>{this.noseconeParams.diameter=val;this.updateCanvas()});this.bindSlider('nc-k-factor',(val)=>{this.noseconeParams.kFactor=val;this.updateCanvas()});this.bindSlider('nc-power',(val)=>{this.noseconeParams.power=val;this.updateCanvas()});this.bindSlider('nc-haack-c',(val)=>{this.noseconeParams.haackC=val;this.updateCanvas()});this.bindSlider('nc-ogive-radius',(val)=>{this.noseconeParams.ogiveRadius=val;this.updateCanvas()});this.bindSlider('nc-shoulder',(val)=>{this.noseconeParams.shoulderLength=val;this.updateCanvas()});this.bindSlider('nc-wall',(val)=>{this.noseconeParams.wallThickness=val;this.updateCanvas()})}bindFinControls(){document.getElementById('fin-planform').addEventListener('change',(e)=>{this.finParams.planform=e.target.value;this.updateFinShapeParams();this.updateCanvas()});this.bindSlider('fin-root',(val)=>{this.finParams.rootChord=val;this.updateCanvas()});this.bindSlider('fin-tip',(val)=>{this.finParams.tipChord=val;this.updateCanvas()});this.bindSlider('fin-span',(val)=>{this.finParams.span=val;this.updateCanvas()});this.bindSlider('fin-sweep',(val)=>{this.finParams.sweepAngle=val;this.updateCanvas()});document.getElementById('fin-airfoil').addEventListener('change',(e)=>{this.finParams.airfoil=e.target.value;this.updateCanvas()});this.bindSlider('fin-thickness',(val)=>{this.finParams.thickness=val;this.updateCanvas()})}bindGCodeControls(){this.bindSlider('gcode-feedrate',(val)=>{this.exportParams.feedRate=val});this.bindSlider('gcode-spindle',(val)=>{this.exportParams.spindleSpeed=val});this.bindSlider('gcode-stock',(val)=>{this.exportParams.stockAllowance=val});document.getElementById('gcode-passes').addEventListener('change',(e)=>{this.exportParams.roughingPasses=parseInt(e.target.value)||3});document.getElementById('gcode-facing').addEventListener('change',(e)=>{this.exportParams.includeFacing=e.target.checked})}bindSlider(id,callback){const slider=document.getElementById(id);const valueSpan=document.getElementById(`${id}-val`);if(!slider)return;slider.addEventListener('input',(e)=>{const val=parseFloat(e.target.value);if(valueSpan)valueSpan.textContent=val;callback(val)})}updateUI(){const noseconeControls=document.getElementById('nosecone-controls');const finControls=document.getElementById('fin-controls');if(this.mode==='nosecone'){noseconeControls.style.display='block';finControls.style.display='none'}else{noseconeControls.style.display='none';finControls.style.display='block'}this.updateNoseConeShapeParams();this.updateFinShapeParams();this.updateUnitLabels()}updateNoseConeShapeParams(){const type=this.noseconeParams.type;document.getElementById('nc-k-factor-group').style.display='none';document.getElementById('nc-power-group').style.display='none';document.getElementById('nc-haack-c-group').style.display='none';document.getElementById('nc-ogive-radius-group').style.display='none';switch(type){case'parabolic':document.getElementById('nc-k-factor-group').style.display='block';break;case'power':document.getElementById('nc-power-group').style.display='block';break;case'haack':document.getElementById('nc-haack-c-group').style.display='block';break;case'secant-ogive':document.getElementById('nc-ogive-radius-group').style.display='block';break}}updateFinShapeParams(){const planform=this.finParams.planform;const showTip=planform!=='rectangular'&&planform!=='elliptical';const showSweep=planform!=='rectangular'&&planform!=='elliptical';document.getElementById('fin-tip-group').style.display=showTip?'block':'none';document.getElementById('fin-sweep-group').style.display=showSweep?'block':'none'}updateUnitLabels(){const unitLabel=this.units==='mm'?'mm':'in';document.querySelectorAll('.unit').forEach(el=>{el.textContent=unitLabel})}updateCanvas(){if(this.mode==='nosecone'){const crossSection=NoseCones.generateCrossSection(this.noseconeParams.type,this.noseconeParams,this.exportParams.points);this.canvas.drawNoseCone(crossSection,this.noseconeParams)}else{const planform=Fins.generatePlanform(this.finParams.planform,this.finParams);this.canvas.drawFinPlanform(planform,this.finParams)}}toggleGCodeOptions(){const optionsEl=document.getElementById('gcode-options');const isVisible=optionsEl.style.display!=='none';if(isVisible){this.exportGCode();optionsEl.style.display='none'}else{optionsEl.style.display='block'}}exportCoords(){const options={units:this.units};if(this.mode==='nosecone'){const crossSection=NoseCones.generateCrossSection(this.noseconeParams.type,this.noseconeParams,this.exportParams.points);const content=CoordsExport.exportNoseCone(crossSection,this.noseconeParams,options);CoordsExport.download(content,`nosecone_${this.noseconeParams.type}_coords.txt`)}else{const planform=Fins.generatePlanform(this.finParams.planform,this.finParams);const content=CoordsExport.exportFin(planform,this.finParams,options);CoordsExport.download(content,`fin_${this.finParams.planform}_coords.txt`)}if(this.closeControlPanelOnExport)this.closeControlPanelOnExport()}exportSVG(){if(this.mode==='nosecone'){const crossSection=NoseCones.generateCrossSection(this.noseconeParams.type,this.noseconeParams,this.exportParams.points);const content=SVGExport.exportNoseCone(crossSection,this.noseconeParams);SVGExport.download(content,`nosecone_${this.noseconeParams.type}.svg`)}else{const planform=Fins.generatePlanform(this.finParams.planform,this.finParams);const content=SVGExport.exportFin(planform,this.finParams);SVGExport.download(content,`fin_${this.finParams.planform}.svg`)}if(this.closeControlPanelOnExport)this.closeControlPanelOnExport()}exportDXF(){const options={units:this.units};if(this.mode==='nosecone'){const crossSection=NoseCones.generateCrossSection(this.noseconeParams.type,this.noseconeParams,this.exportParams.points);const content=DXFExport.exportNoseCone(crossSection,this.noseconeParams,options);DXFExport.download(content,`nosecone_${this.noseconeParams.type}.dxf`)}else{const planform=Fins.generatePlanform(this.finParams.planform,this.finParams);const content=DXFExport.exportFin(planform,this.finParams,options);DXFExport.download(content,`fin_${this.finParams.planform}.dxf`)}if(this.closeControlPanelOnExport)this.closeControlPanelOnExport()}exportGCode(){const options={units:this.units,feedRate:this.exportParams.feedRate,spindleSpeed:this.exportParams.spindleSpeed,stockAllowance:this.exportParams.stockAllowance,roughingPasses:this.exportParams.roughingPasses,includeFacing:this.exportParams.includeFacing};if(this.mode==='nosecone'){const crossSection=NoseCones.generateCrossSection(this.noseconeParams.type,this.noseconeParams,this.exportParams.points);const content=GCodeExport.exportNoseCone(crossSection,this.noseconeParams,options);GCodeExport.download(content,`nosecone_${this.noseconeParams.type}.nc`)}else{const planform=Fins.generatePlanform(this.finParams.planform,this.finParams);options.materialThickness=this.finParams.thickness;const content=GCodeExport.exportFin(planform,this.finParams,options);GCodeExport.download(content,`fin_${this.finParams.planform}.nc`)}document.getElementById('gcode-options').style.display='none';if(this.closeControlPanelOnExport)this.closeControlPanelOnExport()}}
+document.addEventListener('DOMContentLoaded',()=>{window.app=new RocketSectionApp()});
+</script>
+</body>
+</html>
